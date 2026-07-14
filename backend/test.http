@@ -1,0 +1,21 @@
+### Register User
+POST http://localhost:8080/auth/register
+Content-Type: application/json
+
+{
+  "fullName": "Vaishnavii",
+  "email": "vaishnavii@gmail.com",
+  "password": "123456",
+  "role": "USER"
+}
+
+###
+
+### Login User
+POST http://localhost:8080/auth/login
+Content-Type: application/json
+
+{
+  "email": "vaishnavii@gmail.com",
+  "password": "123456"
+}
