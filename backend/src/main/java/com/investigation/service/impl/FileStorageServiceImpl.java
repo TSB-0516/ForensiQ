@@ -1,0 +1,54 @@
+package com.investigation.service.impl;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
+import java.util.UUID;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.investigation.service.FileStorageService;
+
+@Service
+public class FileStorageServiceImpl implements FileStorageService {
+
+    @Value("${file.upload-dir}")
+    private String uploadDir;
+
+    @Override
+    public String store(MultipartFile file) {
+
+        try {
+            String originalName = file.getOriginalFilename();
+            String extension = "";
+
+            if (originalName != null && originalName.contains(".")) {
+                extension = originalName.substring(originalName.lastIndexOf("."));
+            }
+
+            String storedFilename = UUID.randomUUID() + extension;
+
+            Path targetPath = Paths.get(uploadDir).resolve(storedFilename);
+            Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+
+            return storedFilename;
+
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to store file", e);
+        }
+    }
+
+    @Override
+    public InputStream loadForHashing(MultipartFile file) {
+        try {
+            return file.getInputStream();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read file for hashing", e);
+        }
+    }
+}
