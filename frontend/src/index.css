@@ -3,45 +3,111 @@
 @tailwind utilities;
 
 @layer base {
-  * {
-    @apply border-border;
+  html {
+    @apply bg-surface text-on-surface;
+    font-variant-numeric: tabular-nums;
   }
 
   body {
-    @apply bg-background text-foreground font-sans antialiased;
-    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    @apply font-sans text-body-md antialiased;
   }
 
-  input,
-  textarea,
-  select {
-    @apply bg-sidebar border-border text-foreground;
+  :focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(55, 198, 255, 0.35);
+    border-radius: 0.25rem;
   }
 
-  input:focus,
-  textarea:focus,
-  select:focus {
-    @apply outline-none ring-1 ring-accent/50 border-accent/50;
+  ::selection {
+    background: rgba(55, 198, 255, 0.25);
+  }
+
+  ::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #121317;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #3d484f;
+    border-radius: 2px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #37c6ff;
   }
 }
 
+/* Material Symbols — outlined weight, default un-filled state */
+.material-symbols-outlined {
+  font-variation-settings:
+    "FILL" 0,
+    "wght" 400,
+    "GRAD" 0,
+    "opsz" 24;
+}
+.fill-icon {
+  font-variation-settings: "FILL" 1;
+}
+
 @layer utilities {
-  .scrollbar-thin {
-    scrollbar-width: thin;
-    scrollbar-color: #3A4149 transparent;
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
   }
 
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+  .glass-panel {
+    background: rgba(31, 35, 42, 0.6);
+    backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
   }
 
-  .scrollbar-thin::-webkit-scrollbar-track {
-    background: transparent;
+  .bento-card {
+    transition: all 0.2s ease-in-out;
+  }
+  .bento-card:hover {
+    border-color: rgba(55, 198, 255, 0.3);
+    background: rgba(42, 48, 56, 0.8);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    background: rgba(30, 31, 36, 0.8);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.05);
   }
 
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    background-color: #3A4149;
-    border-radius: 3px;
+  .scan-line {
+    width: 100%;
+    height: 2px;
+    background: linear-gradient(to right, transparent, #37c6ff, transparent);
+    position: absolute;
+    top: -2px;
+    left: 0;
+    animation: scan 6s linear infinite;
+    opacity: 0.15;
+    pointer-events: none;
+  }
+
+  @keyframes scan {
+    0% {
+      top: 0%;
+    }
+    100% {
+      top: 100%;
+    }
   }
 }

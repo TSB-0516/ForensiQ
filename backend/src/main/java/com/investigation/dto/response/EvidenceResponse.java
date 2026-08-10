@@ -1,14 +1,13 @@
 package com.investigation.dto.response;
 
-import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
-
 import com.investigation.entity.enums.EvidenceType;
-
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 @Data
 @NoArgsConstructor
@@ -22,6 +21,7 @@ public class EvidenceResponse {
     private LocalDateTime uploadTimestamp;
     private String uploadedBy;
     private boolean registered;
+    private Long caseId;
 
     private String title;
     private String description;

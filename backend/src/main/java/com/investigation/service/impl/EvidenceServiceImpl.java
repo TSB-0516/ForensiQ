@@ -1,20 +1,23 @@
 package com.investigation.service.impl;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
-
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
 import com.investigation.dto.request.EvidenceRegistrationRequest;
 import com.investigation.dto.response.EvidenceResponse;
 import com.investigation.dto.response.EvidenceUploadResponse;
 import com.investigation.entity.Evidence;
+import com.investigation.entity.enums.EvidenceType;
+import com.investigation.exception.ResourceNotFoundException;
+import com.investigation.exception.UnauthorizedActionException;
 import com.investigation.repository.EvidenceRepository;
 import com.investigation.service.EvidenceService;
 import com.investigation.service.FileStorageService;
+import com.investigation.util.AllowedFileTypes;
 import com.investigation.util.HashUtil;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class EvidenceServiceImpl implements EvidenceService {
@@ -35,10 +38,12 @@ public class EvidenceServiceImpl implements EvidenceService {
             throw new RuntimeException("No file provided");
         }
 
-        // Hash first (reads the multipart stream once)
-        String hash = HashUtil.sha256(fileStorageService.loadForHashing(file));
+        if (!AllowedFileTypes.isAllowed(file.getOriginalFilename())) {
+            throw new RuntimeException(
+                    "Unsupported file type. Allowed: images, video, audio, PDF, ZIP, GPS data files.");
+        }
 
-        // Store on disk under a random name; original filename kept only as metadata
+        String hash = HashUtil.sha256(fileStorageService.loadForHashing(file));
         String storedFilename = fileStorageService.store(file);
 
         Evidence evidence = new Evidence();
@@ -53,20 +58,32 @@ public class EvidenceServiceImpl implements EvidenceService {
 
         Evidence saved = evidenceRepository.save(evidence);
 
+        EvidenceType suggestedType = EvidenceType.guessFromFilename(saved.getOriginalFilename());
+
         return new EvidenceUploadResponse(
                 saved.getId(),
                 saved.getOriginalFilename(),
                 saved.getSha256Hash(),
                 saved.getFileSizeBytes(),
-                saved.getUploadTimestamp()
+                saved.getUploadTimestamp(),
+                suggestedType
         );
     }
 
     @Override
-    public EvidenceResponse registerEvidence(Long evidenceId, EvidenceRegistrationRequest request) {
+    public EvidenceResponse registerEvidence(Long evidenceId,
+                                              EvidenceRegistrationRequest request,
+                                              String requesterEmail) {
 
         Evidence evidence = evidenceRepository.findById(evidenceId)
-                .orElseThrow(() -> new RuntimeException("Evidence not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Evidence not found with id: " + evidenceId));
+
+        // Only the investigator who uploaded it can complete registration.
+        // Admins are handled separately via @PreAuthorize on the controller.
+        if (!evidence.getUploadedBy().equals(requesterEmail)) {
+            throw new UnauthorizedActionException(
+                    "You can only register evidence that you uploaded.");
+        }
 
         evidence.setTitle(request.getTitle());
         evidence.setDescription(request.getDescription());
@@ -105,7 +122,7 @@ public class EvidenceServiceImpl implements EvidenceService {
     @Override
     public EvidenceResponse getEvidenceById(Long id) {
         Evidence evidence = evidenceRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Evidence not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Evidence not found with id: " + id));
         return toResponse(evidence);
     }
 
@@ -118,6 +135,7 @@ public class EvidenceServiceImpl implements EvidenceService {
                 e.getUploadTimestamp(),
                 e.getUploadedBy(),
                 e.isRegistered(),
+                e.getCaseId(),
                 e.getTitle(),
                 e.getDescription(),
                 e.getEvidenceType(),

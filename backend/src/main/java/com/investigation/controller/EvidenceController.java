@@ -3,6 +3,7 @@ package com.investigation.controller;
 import java.util.List;
 
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -29,7 +30,9 @@ public class EvidenceController {
         this.evidenceService = evidenceService;
     }
 
-    // Module 4 — Evidence Upload
+    // Module 4 — Evidence Upload. Admins can also upload on behalf of setup/testing;
+    // Forensic Analysts and Prosecutors have no reason to originate evidence.
+    @PreAuthorize("hasAnyRole('INVESTIGATOR', 'ADMIN')")
     @PostMapping(value = "/upload", consumes = "multipart/form-data")
     public ResponseEntity<EvidenceUploadResponse> upload(@RequestParam("file") MultipartFile file,
                                                           Authentication authentication) {
@@ -40,27 +43,33 @@ public class EvidenceController {
         return ResponseEntity.ok(response);
     }
 
-    // Module 5 — Evidence Registration
+    // Module 5 — Evidence Registration. Ownership is enforced in the service layer.
+    @PreAuthorize("hasAnyRole('INVESTIGATOR', 'ADMIN')")
     @PutMapping("/{id}/register")
     public ResponseEntity<EvidenceResponse> register(@PathVariable Long id,
-                                                      @RequestBody EvidenceRegistrationRequest request) {
+                                                      @RequestBody EvidenceRegistrationRequest request,
+                                                      Authentication authentication) {
 
-        return ResponseEntity.ok(evidenceService.registerEvidence(id, request));
+        EvidenceResponse response =
+                evidenceService.registerEvidence(id, request, authentication.getName());
+
+        return ResponseEntity.ok(response);
     }
 
-    // Module 3 — Evidence Vault (list all)
+    // Module 3 — Evidence Vault (list all). Every role can view; Prosecutors and
+    // Forensic Analysts need read access even though they can't upload/register.
     @GetMapping
     public ResponseEntity<List<EvidenceResponse>> getAll() {
         return ResponseEntity.ok(evidenceService.getAllEvidence());
     }
 
-    // Investigator's own uploaded evidence
+    @PreAuthorize("hasAnyRole('INVESTIGATOR', 'ADMIN')")
     @GetMapping("/mine")
     public ResponseEntity<List<EvidenceResponse>> getMine(Authentication authentication) {
         return ResponseEntity.ok(evidenceService.getEvidenceByCurrentUser(authentication.getName()));
     }
 
-    // Module 6 — Evidence Details
+    // Module 6 — Evidence Details. Open to all authenticated roles (see /GET above).
     @GetMapping("/{id}")
     public ResponseEntity<EvidenceResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(evidenceService.getEvidenceById(id));

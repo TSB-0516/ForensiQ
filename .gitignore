@@ -35,3 +35,50 @@ Thumbs.db
 # ==========================
 .env
 application-local.properties
+
+# Frontend Vite / React runtime and test artifacts
+frontend/dist/
+frontend/node_modules/
+frontend/.vite/
+frontend/.cache/
+frontend/coverage/
+frontend/playwright-report/
+frontend/test-results/
+frontend/.eslintcache
+frontend/.parcel-cache/
+
+# Backend compiled / generated artifacts
+backend/target/
+backend/uploads/
+backend/logs/
+backend/*.log
+backend/.classpath
+backend/.project
+backend/.settings/
+backend/.factorypath
+
+# Maven wrapper exception (keep properties but ignore jar if needed)
+backend/.mvn/wrapper/*.jar
+!backend/.mvn/wrapper/maven-wrapper.properties
+
+# Local environment / secret files
+.env*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+
+# OS / editor swap files
+*.swp
+*.swo
+*.orig
+Thumbs.db
+.DS_Store
+
+# Optional: if you do not want screenshots / test output committed
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp

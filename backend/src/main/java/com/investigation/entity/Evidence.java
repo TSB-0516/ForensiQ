@@ -1,19 +1,11 @@
 package com.investigation.entity;
 
+import com.investigation.entity.enums.EvidenceType;
+import jakarta.persistence.*;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-
-import com.investigation.entity.enums.EvidenceType;
-
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "evidence")
@@ -25,14 +17,20 @@ public class Evidence {
 
     // ---- System generated at upload time ----
     private String originalFilename;
-    private String storedFilename;   // random UUID name on disk, original name preserved as metadata only
+    private String storedFilename;
     private String storagePath;
     private String sha256Hash;
     private Long fileSizeBytes;
     private LocalDateTime uploadTimestamp;
-    private String uploadedBy;       // email of investigator
+    private String uploadedBy; // email of investigator
 
-    private boolean registered = false; // false until registration form is submitted
+    private boolean registered = false;
+
+    // Phase II placeholder: will become a @ManyToOne to InvestigationCase.
+    // Kept as a plain nullable FK-style column now so adding the real
+    // relationship later is a type change, not a schema migration touching
+    // every existing row.
+    private Long caseId;
 
     // ---- Filled during Evidence Registration ----
     private String title;
@@ -49,7 +47,7 @@ public class Evidence {
     private String collectionLocation;
     private String relatedSuspect;
     private String relatedWitness;
-    private String investigationTags; // comma-separated for Phase I
+    private String investigationTags;
 
     @Column(length = 2000)
     private String additionalRemarks;
@@ -85,6 +83,9 @@ public class Evidence {
 
     public boolean isRegistered() { return registered; }
     public void setRegistered(boolean registered) { this.registered = registered; }
+
+    public Long getCaseId() { return caseId; }
+    public void setCaseId(Long caseId) { this.caseId = caseId; }
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }

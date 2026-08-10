@@ -14,4 +14,8 @@ public interface EvidenceRepository extends JpaRepository<Evidence, Long> {
     List<Evidence> findByEvidenceType(EvidenceType evidenceType);
 
     List<Evidence> findByTitleContainingIgnoreCase(String keyword);
+
+    // Phase II — once InvestigationCase exists, evidence will mostly be
+    // browsed within a case rather than globally.
+    List<Evidence> findByCaseId(Long caseId);
 }

@@ -12,6 +12,6 @@ public class RegisterRequest {
     private String fullName;
     private String email;
     private String password;
-    private String role;
+    private String role; // validated + converted to Role enum in the service layer
 
 }

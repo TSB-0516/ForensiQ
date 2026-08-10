@@ -22,36 +22,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-.env
-.env.local
-.env.*.local
-
-
-# Java / Maven / backend
-/backend/target/
-/backend/*.log
-*.class
-*.jar
-*.war
-/*.log
-
-
-
-# Uploads / large user files
-/uploads/
-uploads/
-
-# Secrets and keys
-*.jks
-*.keystore
-*.pem
-*.key
-*.p12
-*.env
-
-# Test, coverage, generated
-/coverage/
-.nyc_output/
-report/
-test-outputs/

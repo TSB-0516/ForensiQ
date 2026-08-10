@@ -1,14 +1,19 @@
 package com.investigation.controller;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.investigation.dto.request.LoginRequest;
 import com.investigation.dto.request.RegisterRequest;
 import com.investigation.dto.response.LoginResponse;
-import com.investigation.jwt.JwtUtil;
+import com.investigation.dto.response.UserResponse;
 import com.investigation.entity.User;
+import com.investigation.jwt.JwtUtil;
 import com.investigation.service.UserService;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/auth")
@@ -23,11 +28,18 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<User> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<UserResponse> register(@RequestBody RegisterRequest request) {
 
         User user = userService.register(request);
 
-        return new ResponseEntity<>(user, HttpStatus.CREATED);
+        UserResponse response = new UserResponse(
+                user.getId(),
+                user.getFullName(),
+                user.getEmail(),
+                user.getRole().name()
+        );
+
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
     @PostMapping("/login")
@@ -35,12 +47,13 @@ public class AuthController {
 
         User user = userService.login(request);
 
-        String token = jwtUtil.generateToken(user.getEmail());
+        String token = jwtUtil.generateToken(user.getEmail(), user.getRole().name());
 
         LoginResponse response = new LoginResponse(
                 token,
                 user.getEmail(),
-                user.getRole()
+                user.getFullName(),
+                user.getRole().name()
         );
 
         return ResponseEntity.ok(response);

@@ -1,0 +1,10 @@
+# Unified Evidence Investigation Intelligence Platform
+# Local development prerequisites
+#
+# This project is not a Python package. The runtime requirements are:
+# - Java 21
+# - Maven (or Maven wrapper included in backend/)
+# - Node.js 18+ and npm
+# - PostgreSQL 15+ (configured for localhost:5432)
+#
+# Install and use the Java, Maven, Node.js, and PostgreSQL toolchains before launching the app.

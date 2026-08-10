@@ -1,5 +1,10 @@
 package com.investigation.service;
 
-public class DashboardService {
-    
+import com.investigation.dto.response.DashboardStatsResponse;
+
+public interface DashboardService {
+
+    DashboardStatsResponse getAdminStats();
+
+    DashboardStatsResponse getInvestigatorStats(String investigatorEmail);
 }
