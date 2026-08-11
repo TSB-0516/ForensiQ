@@ -24,17 +24,31 @@ public class FileStorageServiceImpl implements FileStorageService {
     public String store(MultipartFile file) {
 
         try {
+
+            Path uploadPath = Paths.get(uploadDir);
+
+            // Create uploads directory if it doesn't exist
+            Files.createDirectories(uploadPath);
+
             String originalName = file.getOriginalFilename();
+
             String extension = "";
 
             if (originalName != null && originalName.contains(".")) {
-                extension = originalName.substring(originalName.lastIndexOf("."));
+                extension = originalName.substring(
+                        originalName.lastIndexOf(".")
+                );
             }
 
             String storedFilename = UUID.randomUUID() + extension;
 
-            Path targetPath = Paths.get(uploadDir).resolve(storedFilename);
-            Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
+            Path targetPath = uploadPath.resolve(storedFilename);
+
+            Files.copy(
+                    file.getInputStream(),
+                    targetPath,
+                    StandardCopyOption.REPLACE_EXISTING
+            );
 
             return storedFilename;
 

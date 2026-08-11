@@ -1,3 +1,4 @@
+import { uploadEvidence } from '@/services/evidenceService';
 import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -72,19 +73,41 @@ export default function EvidenceUploadPage() {
     handleFile(file);
   };
 
-  const handleProceed = () => {
+  const handleProceed = async () => {
     if (!selectedFile) return;
 
-    navigate('/evidence/register', {
-      state: {
-        file: {
-          name: selectedFile.name,
-          size: selectedFile.size,
-          type: selectedFile.type,
+    try {
+      toast.info('Uploading evidence...');
+
+      const response = await uploadEvidence(selectedFile);
+
+      console.log('Evidence uploaded successfully:', response);
+
+      toast.success('Evidence uploaded successfully');
+
+      navigate('/evidence/register', {
+        state: {
+          evidenceId: response.evidenceId,
+          file: {
+            name: response.originalFilename,
+            size: response.fileSizeBytes,
+            type: selectedFile.type,
+          },
+          uploadResponse: response,
         },
-        fileObject: selectedFile,
-      },
-    });
+      });
+
+    } catch (error) {
+      console.error('Evidence upload failed:', error);
+
+      toast.error('Evidence upload failed', {
+        description:
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          error.message ||
+          'Could not upload evidence',
+      });
+    }
   };
 
   return (

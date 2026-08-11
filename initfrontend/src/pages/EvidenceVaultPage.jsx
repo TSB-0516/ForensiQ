@@ -28,7 +28,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getEvidenceList, INTEGRITY_STATUS } from '@/services/evidenceService';
+import { getAllEvidence, INTEGRITY_STATUS } from '@/services/evidenceService';
+import { toast } from 'sonner';
 import { EVIDENCE_TYPES, SORT_OPTIONS } from '@/utils/constants';
 import { cn, formatDateTime } from '@/utils/helpers';
 
@@ -69,9 +70,47 @@ export default function EvidenceVaultPage() {
 
   const loadEvidence = useCallback(async () => {
     setLoading(true);
+
     try {
-      const data = await getEvidenceList();
-      setEvidence(data);
+      const data = await getAllEvidence();
+
+      const mappedData = data.map((item) => ({
+        ...item,
+
+        id: String(item.id),
+
+        title:
+          item.title ||
+          item.originalFilename ||
+          'Unregistered Evidence',
+
+        uploadDate: item.uploadTimestamp,
+
+        integrityStatus: item.registered
+          ? INTEGRITY_STATUS.VERIFIED
+          : INTEGRITY_STATUS.PENDING,
+
+        tags: item.investigationTags
+          ? item.investigationTags
+              .split(',')
+              .map((tag) => tag.trim())
+              .filter(Boolean)
+          : [],
+      }));
+
+      setEvidence(mappedData);
+
+    } catch (error) {
+
+      console.error('Failed to load evidence:', error);
+
+      toast.error('Failed to load evidence', {
+        description:
+          error.response?.data?.message ||
+          error.response?.data?.error ||
+          'Could not load evidence from backend',
+      });
+
     } finally {
       setLoading(false);
     }
@@ -205,8 +244,8 @@ export default function EvidenceVaultPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">All Statuses</SelectItem>
-                    <SelectItem value="Verified">Verified</SelectItem>
-                    <SelectItem value="Pending">Pending</SelectItem>
+                    <SelectItem value="VERIFIED">Verified</SelectItem>
+                    <SelectItem value="PENDING">Pending</SelectItem>
                   </SelectContent>
                 </Select>
 

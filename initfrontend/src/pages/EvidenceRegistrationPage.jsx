@@ -64,7 +64,11 @@ import {
 
 } from '@/components/ui/select';
 
-import { registerEvidence, INTEGRITY_STATUS } from '@/services/evidenceService';
+import {
+  uploadEvidence,
+  registerEvidence,
+  INTEGRITY_STATUS,
+} from '@/services/evidenceService';
 
 import { EVIDENCE_TYPES } from '@/utils/constants';
 
@@ -222,63 +226,71 @@ export default function EvidenceRegistrationPage() {
 
 
 
-  const onSubmit = async (data) => {
+const onSubmit = async (data) => {
+  setSubmitting(true);
 
-    setSubmitting(true);
+  try {
+    // ---------------------------------------
+    // STEP 1: Upload actual file
+    // ---------------------------------------
+    const uploadResult = await uploadEvidence(fileObject);
 
-    try {
+    console.log('Upload response:', uploadResult);
 
-      const result = await registerEvidence({
+    // Backend returns:
+    // {
+    //   evidenceId,
+    //   originalFilename,
+    //   sha256Hash,
+    //   fileSizeBytes,
+    //   uploadTimestamp,
+    //   suggestedEvidenceType
+    // }
 
-        ...data,
+    const evidenceId = uploadResult.evidenceId;
 
-        originalFilename: fileInfo.name,
-
-        fileSize: fileInfo.size,
-
-        fileType: fileInfo.type || getFileExtension(fileInfo.name),
-
-        file: fileObject,
-
-      });
-
-
-
-      setShowSuccess(true);
-
-      toast.success('Evidence registered successfully', {
-
-        description: `${result.evidence.id} has been logged in the vault.`,
-
-        duration: 4000,
-
-      });
-
-
-
-      setTimeout(() => {
-
-        navigate('/evidence/vault', {
-
-          state: { highlightId: result.evidence.id },
-
-        });
-
-      }, 1200);
-
-    } catch {
-
-      toast.error('Registration failed', {
-
-        description: 'Unable to register evidence. Please try again.',
-
-      });
-
-      setSubmitting(false);
-
+    if (!evidenceId) {
+      throw new Error('Backend did not return an evidence ID');
     }
 
-  };
+    // ---------------------------------------
+    // STEP 2: Register metadata
+    // ---------------------------------------
+    const result = await registerEvidence(evidenceId, data);
+
+    console.log('Registration response:', result);
+
+    setShowSuccess(true);
+
+    toast.success('Evidence registered successfully', {
+      description: `Evidence #${result.id} has been logged in the vault.`,
+      duration: 4000,
+    });
+
+    setTimeout(() => {
+      navigate('/evidence/vault', {
+        state: {
+          highlightId: result.id,
+        },
+      });
+    }, 1200);
+
+  } catch (error) {
+    console.error('Evidence registration error:', error);
+
+    const message =
+      error.response?.data?.message ||
+      error.response?.data?.error ||
+      error.message ||
+      'Unable to register evidence. Please try again.';
+
+    toast.error('Registration failed', {
+      description: message,
+    });
+
+    setSubmitting(false);
+  }
+};
 
 
 
