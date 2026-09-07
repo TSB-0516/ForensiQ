@@ -10,4 +10,5 @@ public interface FileStorageService {
     String store(MultipartFile file);
 
     java.io.InputStream loadForHashing(MultipartFile file);
+    void delete(String storedFilename);
 }

@@ -1,5 +1,7 @@
 package com.investigation.entity.enums;
 
-public class CaseStatus {
-    
+public enum CaseStatus {
+    OPEN,
+    IN_PROGRESS,
+    CLOSED
 }

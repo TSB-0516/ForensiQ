@@ -65,4 +65,22 @@ public class FileStorageServiceImpl implements FileStorageService {
             throw new RuntimeException("Failed to read file for hashing", e);
         }
     }
+
+    @Override
+public void delete(String storedFilename) {
+    try {
+        if (storedFilename == null || storedFilename.isBlank()) {
+            return;
+        }
+
+        Path uploadPath = Paths.get(uploadDir);
+        Path filePath = uploadPath.resolve(storedFilename);
+
+        Files.deleteIfExists(filePath);
+
+    } catch (IOException e) {
+        throw new RuntimeException("Failed to delete stored file", e);
+    }
+}
+
 }

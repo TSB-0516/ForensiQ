@@ -36,6 +36,7 @@ export function AuthProvider({ children }) {
       const authData = {
         token: response.token,
         email: response.email,
+        fullName: response.fullName,
         role: response.role,
       };
       persistAuth(authData);
@@ -63,6 +64,7 @@ export function AuthProvider({ children }) {
     user: auth,
     token: auth?.token ?? null,
     email: auth?.email ?? null,
+    fullName: auth?.fullName ?? null,
     role: auth?.role ?? null,
     isAuthenticated: Boolean(auth?.token),
     loading,

@@ -1,5 +1,13 @@
 package com.investigation.service.impl;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+
 import com.investigation.dto.request.EvidenceRegistrationRequest;
 import com.investigation.dto.response.EvidenceResponse;
 import com.investigation.dto.response.EvidenceUploadResponse;
@@ -12,12 +20,6 @@ import com.investigation.service.EvidenceService;
 import com.investigation.service.FileStorageService;
 import com.investigation.util.AllowedFileTypes;
 import com.investigation.util.HashUtil;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class EvidenceServiceImpl implements EvidenceService {
@@ -26,7 +28,7 @@ public class EvidenceServiceImpl implements EvidenceService {
     private final FileStorageService fileStorageService;
 
     public EvidenceServiceImpl(EvidenceRepository evidenceRepository,
-                                FileStorageService fileStorageService) {
+            FileStorageService fileStorageService) {
         this.evidenceRepository = evidenceRepository;
         this.fileStorageService = fileStorageService;
     }
@@ -71,16 +73,20 @@ public class EvidenceServiceImpl implements EvidenceService {
     }
 
     @Override
-    public EvidenceResponse registerEvidence(Long evidenceId,
-                                              EvidenceRegistrationRequest request,
-                                              String requesterEmail) {
+    public EvidenceResponse registerEvidence(
+            Long evidenceId,
+            EvidenceRegistrationRequest request,
+            String requesterEmail,
+            boolean isAdmin) {
 
         Evidence evidence = evidenceRepository.findById(evidenceId)
-                .orElseThrow(() -> new ResourceNotFoundException("Evidence not found with id: " + evidenceId));
+                .orElseThrow(()
+                        -> new ResourceNotFoundException(
+                        "Evidence not found with id: " + evidenceId));
 
-        // Only the investigator who uploaded it can complete registration.
-        // Admins are handled separately via @PreAuthorize on the controller.
-        if (!evidence.getUploadedBy().equals(requesterEmail)) {
+        // Investigators can only register evidence they uploaded.
+        // Admins can register any evidence.
+        if (!isAdmin && !evidence.getUploadedBy().equals(requesterEmail)) {
             throw new UnauthorizedActionException(
                     "You can only register evidence that you uploaded.");
         }
@@ -135,7 +141,7 @@ public class EvidenceServiceImpl implements EvidenceService {
                 e.getUploadTimestamp(),
                 e.getUploadedBy(),
                 e.isRegistered(),
-                e.getCaseId(),
+                e.getInvestigationCase() != null ? e.getInvestigationCase().getId() : null,
                 e.getTitle(),
                 e.getDescription(),
                 e.getEvidenceType(),
@@ -148,5 +154,30 @@ public class EvidenceServiceImpl implements EvidenceService {
                 e.getInvestigationTags(),
                 e.getAdditionalRemarks()
         );
+    }
+
+    @Override
+    @Transactional
+    public void deleteEvidence(Long evidenceId, String requesterEmail, boolean isAdmin) {
+
+        Evidence evidence = evidenceRepository.findById(evidenceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Evidence not found with id: " + evidenceId));
+
+        if (isAdmin) {
+            evidenceRepository.delete(evidence);
+            fileStorageService.delete(evidence.getStoredFilename());
+            return;
+        }
+
+        if (!evidence.getUploadedBy().equals(requesterEmail)) {
+            throw new UnauthorizedActionException("You can only delete evidence that you uploaded.");
+        }
+
+        if (evidence.isRegistered()) {
+            throw new UnauthorizedActionException("Registered evidence cannot be deleted by an investigator.");
+        }
+
+        evidenceRepository.delete(evidence);
+        fileStorageService.delete(evidence.getStoredFilename());
     }
 }

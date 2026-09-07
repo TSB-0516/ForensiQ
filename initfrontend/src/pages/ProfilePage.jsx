@@ -5,7 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { isAdminRole } from '@/utils/helpers';
 
 export default function ProfilePage() {
-  const { email, role } = useAuth();
+  const { email, fullName, role } = useAuth();
   const roleLabel = isAdminRole(role) ? 'Administrator' : 'Investigator';
 
   return (
@@ -27,7 +27,7 @@ export default function ProfilePage() {
                 <Shield className="h-6 w-6 text-accent" />
               </div>
               <div>
-                <p className="text-sm font-medium text-foreground">{email}</p>
+                <p className="text-sm font-medium text-foreground">{fullName}</p>
                 <span className="mt-1 inline-block rounded-sm bg-accent/10 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-accent">
                   {roleLabel}
                 </span>
@@ -35,6 +35,13 @@ export default function ProfilePage() {
             </div>
 
             <div className="grid gap-3">
+              <div className="flex items-center gap-3 rounded-sm border border-border p-3">
+                <UserCircle className="h-4 w-4 text-muted" />
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider text-muted">Full Name</p>
+                  <p className="text-sm text-foreground">{fullName}</p>
+                </div>
+              </div>
               <div className="flex items-center gap-3 rounded-sm border border-border p-3">
                 <Mail className="h-4 w-4 text-muted" />
                 <div>

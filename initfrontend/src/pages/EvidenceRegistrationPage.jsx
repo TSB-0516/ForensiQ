@@ -65,7 +65,6 @@ import {
 } from '@/components/ui/select';
 
 import {
-  uploadEvidence,
   registerEvidence,
   INTEGRITY_STATUS,
 } from '@/services/evidenceService';
@@ -90,18 +89,12 @@ const evidenceSchema = z.object({
 
   collectedBy: z.string().min(1, 'Collected by is required'),
 
-  location: z.string().min(1, 'Location is required'),
-
+  collectionLocation: z.string().min(1, 'Location is required'),
   evidenceType: z.string().min(1, 'Evidence type is required'),
-
-  tags: z.string().optional(),
-
+  investigationTags: z.string().optional(),
   relatedSuspect: z.string().optional(),
-
   relatedWitness: z.string().optional(),
-
-  remarks: z.string().optional(),
-
+  additionalRemarks: z.string().optional(),
 });
 
 
@@ -150,11 +143,10 @@ export default function EvidenceRegistrationPage() {
 
   const isViewMode = location.state?.mode === 'view';
 
-  const evidence = location.state?.evidence;
-
-  const fileInfo = location.state?.file;
-
-  const fileObject = location.state?.fileObject;
+const evidence = location.state?.evidence;
+const fileInfo = location.state?.file;
+const evidenceId = location.state?.evidenceId;
+const uploadResponse = location.state?.uploadResponse;
 
 
 
@@ -204,18 +196,12 @@ export default function EvidenceRegistrationPage() {
 
       collectedBy: '',
 
-      location: '',
-
-      evidenceType: detectedType,
-
-      tags: '',
-
+      collectionLocation: '',
+      evidenceType: uploadResponse?.suggestedEvidenceType ?? detectedType,
+      investigationTags: '',
       relatedSuspect: '',
-
       relatedWitness: '',
-
-      remarks: '',
-
+      additionalRemarks: '',
     },
 
   });
@@ -230,32 +216,12 @@ const onSubmit = async (data) => {
   setSubmitting(true);
 
   try {
-    // ---------------------------------------
-    // STEP 1: Upload actual file
-    // ---------------------------------------
-    const uploadResult = await uploadEvidence(fileObject);
-
-    console.log('Upload response:', uploadResult);
-
-    // Backend returns:
-    // {
-    //   evidenceId,
-    //   originalFilename,
-    //   sha256Hash,
-    //   fileSizeBytes,
-    //   uploadTimestamp,
-    //   suggestedEvidenceType
-    // }
-
-    const evidenceId = uploadResult.evidenceId;
-
     if (!evidenceId) {
-      throw new Error('Backend did not return an evidence ID');
+      throw new Error('Evidence ID is missing');
     }
 
-    // ---------------------------------------
-    // STEP 2: Register metadata
-    // ---------------------------------------
+    // Register metadata for the evidence that was
+    // already uploaded on the previous page.
     const result = await registerEvidence(evidenceId, data);
 
     console.log('Registration response:', result);
@@ -589,41 +555,23 @@ const onSubmit = async (data) => {
             <div className="grid gap-3 sm:grid-cols-3">
 
               <div className="rounded-sm border border-border bg-sidebar p-3">
-
                 <p className="text-[10px] uppercase tracking-wider text-muted">Original Filename</p>
-
-                <p className="mt-1.5 truncate text-sm font-medium text-foreground font-mono">{fileInfo.name}</p>
-
+                <p className="mt-1.5 truncate text-sm font-medium text-foreground font-mono">{uploadResponse?.originalFilename || fileInfo.name}</p>
               </div>
-
               <div className="rounded-sm border border-border bg-sidebar p-3">
-
                 <p className="text-[10px] uppercase tracking-wider text-muted">File Size</p>
-
-                <p className="mt-1.5 text-sm font-medium text-foreground">{formatFileSize(fileInfo.size)}</p>
-
+                <p className="mt-1.5 text-sm font-medium text-foreground">{formatFileSize(uploadResponse?.fileSizeBytes || fileInfo.size)}</p>
               </div>
-
               <div className="rounded-sm border border-border bg-sidebar p-3 sm:col-span-1 col-span-full sm:col-auto">
-
-                <p className="text-[10px] uppercase tracking-wider text-muted">File Type</p>
-
-                <p className="mt-1.5 text-sm font-medium text-foreground">
-
-                  {fileInfo.type || getFileExtension(fileInfo.name)}
-
+                <p className="text-[10px] uppercase tracking-wider text-muted">File Hash</p>
+                <p className="mt-1.5 text-sm font-medium text-foreground truncate font-mono">
+                  {uploadResponse?.sha256Hash || 'Pending...'}
                 </p>
-
               </div>
-
             </div>
-
             <p className="mt-3 flex items-center gap-1.5 text-[10px] text-muted">
-
               <Hash className="h-3 w-3" aria-hidden="true" />
-
-              Evidence ID and SHA-256 hash will be generated upon save · Operator: {email}
-
+              Evidence ID: #{evidenceId} · Uploaded: {uploadResponse?.uploadTimestamp ? new Date(uploadResponse.uploadTimestamp).toLocaleString() : 'Just now'} · Operator: {email}
             </p>
 
           </CardContent>
@@ -734,22 +682,14 @@ const onSubmit = async (data) => {
 
                 <div className="space-y-2">
 
-                  <Label htmlFor="location" className="flex items-center gap-1.5">
-
+                  <Label htmlFor="collectionLocation" className="flex items-center gap-1.5">
                     <MapPin className="h-3 w-3" aria-hidden="true" />
-
                     Location
-
                   </Label>
-
-                  <Input id="location" placeholder="e.g. Coimbatore City Police Station" {...register('location')} aria-invalid={!!errors.location} />
-
-                  {errors.location && (
-
-                    <p className="text-xs text-danger" role="alert">{errors.location.message}</p>
-
+                  <Input id="collectionLocation" placeholder="e.g. Coimbatore City Police Station" {...register('collectionLocation')} aria-invalid={!!errors.collectionLocation} />
+                  {errors.collectionLocation && (
+                    <p className="text-xs text-danger" role="alert">{errors.collectionLocation.message}</p>
                   )}
-
                 </div>
 
               </div>
@@ -804,10 +744,8 @@ const onSubmit = async (data) => {
 
               <div className="space-y-2">
 
-                <Label htmlFor="tags">Tags</Label>
-
-                <Input id="tags" placeholder="Comma-separated (e.g. cctv, surveillance, coimbatore)" {...register('tags')} />
-
+                <Label htmlFor="investigationTags">Tags</Label>
+                <Input id="investigationTags" placeholder="Comma-separated (e.g. cctv, surveillance, coimbatore)" {...register('investigationTags')} />
               </div>
 
 
@@ -835,26 +773,16 @@ const onSubmit = async (data) => {
 
 
               <div className="space-y-2">
-
-                <Label htmlFor="remarks">Remarks</Label>
-
+                <Label htmlFor="additionalRemarks">Additional Remarks</Label>
                 <Textarea
-
-                  id="remarks"
-
-                  placeholder="Additional notes or observations..."
-
+                  id="additionalRemarks"
+                  placeholder="Any other observations, conditions at the time of collection, or handling instructions..."
                   rows={2}
-
-                  {...register('remarks')}
-
+                  {...register('additionalRemarks')}
                 />
-
               </div>
 
-
-
-              <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
+              <div className="flex items-center justify-end gap-3 border-t border-border pt-5">
 
                 <Button type="button" variant="secondary" onClick={() => navigate('/evidence/upload')} disabled={submitting}>
 

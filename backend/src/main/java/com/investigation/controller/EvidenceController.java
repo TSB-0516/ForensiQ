@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -45,16 +46,26 @@ public class EvidenceController {
 
     // Module 5 — Evidence Registration. Ownership is enforced in the service layer.
     @PreAuthorize("hasAnyRole('INVESTIGATOR', 'ADMIN')")
-    @PutMapping("/{id}/register")
-    public ResponseEntity<EvidenceResponse> register(@PathVariable Long id,
-                                                      @RequestBody EvidenceRegistrationRequest request,
-                                                      Authentication authentication) {
+@PutMapping("/{id}/register")
+public ResponseEntity<EvidenceResponse> register(
+        @PathVariable Long id,
+        @RequestBody EvidenceRegistrationRequest request,
+        Authentication authentication) {
 
-        EvidenceResponse response =
-                evidenceService.registerEvidence(id, request, authentication.getName());
+    boolean isAdmin = authentication.getAuthorities()
+            .stream()
+            .anyMatch(authority ->
+                    authority.getAuthority().equals("ROLE_ADMIN"));
 
-        return ResponseEntity.ok(response);
-    }
+    EvidenceResponse response =
+            evidenceService.registerEvidence(
+                    id,
+                    request,
+                    authentication.getName(),
+                    isAdmin);
+
+    return ResponseEntity.ok(response);
+}
 
     // Module 3 — Evidence Vault (list all). Every role can view; Prosecutors and
     // Forensic Analysts need read access even though they can't upload/register.
@@ -74,4 +85,23 @@ public class EvidenceController {
     public ResponseEntity<EvidenceResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(evidenceService.getEvidenceById(id));
     }
+
+    @PreAuthorize("hasAnyRole('INVESTIGATOR', 'ADMIN')")
+@DeleteMapping("/{id}")
+public ResponseEntity<Void> delete(
+        @PathVariable Long id,
+        Authentication authentication) {
+
+    boolean isAdmin = authentication.getAuthorities()
+            .stream()
+            .anyMatch(authority ->
+                    authority.getAuthority().equals("ROLE_ADMIN"));
+
+    evidenceService.deleteEvidence(
+            id,
+            authentication.getName(),
+            isAdmin);
+
+    return ResponseEntity.noContent().build();
+}
 }

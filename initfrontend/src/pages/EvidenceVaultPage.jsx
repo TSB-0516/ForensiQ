@@ -13,6 +13,8 @@ import {
   File,
   Filter,
   X,
+  Trash2,
+  Loader2,
 } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Card, CardContent } from '@/components/ui/card';
@@ -28,10 +30,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getAllEvidence, INTEGRITY_STATUS } from '@/services/evidenceService';
+import {
+  getAllEvidence,
+  getMyEvidence,
+  deleteEvidence,
+} from '@/services/evidenceService';
+import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { EVIDENCE_TYPES, SORT_OPTIONS } from '@/utils/constants';
-import { cn, formatDateTime } from '@/utils/helpers';
+import { cn, formatDateTime, formatFileSize } from '@/utils/helpers';
 
 const TYPE_ICONS = {
   IMAGE: Image,
@@ -48,11 +55,10 @@ function EvidenceTypeIcon({ type, className }) {
   return <Icon className={className} aria-hidden="true" />;
 }
 
-function IntegrityBadge({ status }) {
-  const isVerified = status === INTEGRITY_STATUS.VERIFIED;
+function RegistrationBadge({ registered }) {
   return (
-    <Badge variant={isVerified ? 'success' : 'secondary'}>
-      {status}
+    <Badge variant={registered ? 'success' : 'secondary'}>
+      {registered ? 'Registered' : 'Unregistered'}
     </Badge>
   );
 }
@@ -60,36 +66,36 @@ function IntegrityBadge({ status }) {
 export default function EvidenceVaultPage() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { role, email } = useAuth();
+
   const [evidence, setEvidence] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [fetchError, setFetchError] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState('ALL');
-  const [integrityFilter, setIntegrityFilter] = useState('ALL');
+  const [registrationFilter, setRegistrationFilter] = useState('ALL');
   const [sortOrder, setSortOrder] = useState('newest');
   const [highlightId, setHighlightId] = useState(location.state?.highlightId ?? null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
 
   const loadEvidence = useCallback(async () => {
     setLoading(true);
+    setFetchError(null);
 
     try {
-      const data = await getAllEvidence();
+      // Investigators fetch only their own evidence.
+      // All other authenticated roles fetch the full evidence list.
+      const data = role === 'INVESTIGATOR' ? await getMyEvidence() : await getAllEvidence();
 
       const mappedData = data.map((item) => ({
         ...item,
-
         id: String(item.id),
-
-        title:
-          item.title ||
-          item.originalFilename ||
-          'Unregistered Evidence',
-
+        // Display title; fall back to original filename for unregistered evidence.
+        title: item.title || item.originalFilename || 'Untitled Evidence',
+        // Normalise the upload timestamp key for sorting.
         uploadDate: item.uploadTimestamp,
-
-        integrityStatus: item.registered
-          ? INTEGRITY_STATUS.VERIFIED
-          : INTEGRITY_STATUS.PENDING,
-
+        // Parse investigationTags from the backend field.
         tags: item.investigationTags
           ? item.investigationTags
               .split(',')
@@ -99,22 +105,18 @@ export default function EvidenceVaultPage() {
       }));
 
       setEvidence(mappedData);
-
     } catch (error) {
-
       console.error('Failed to load evidence:', error);
-
-      toast.error('Failed to load evidence', {
-        description:
-          error.response?.data?.message ||
-          error.response?.data?.error ||
-          'Could not load evidence from backend',
-      });
-
+      const message =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        'Could not load evidence from backend';
+      setFetchError(message);
+      toast.error('Failed to load evidence', { description: message });
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [role]);
 
   useEffect(() => {
     loadEvidence();
@@ -127,6 +129,60 @@ export default function EvidenceVaultPage() {
     }
   }, [highlightId]);
 
+  // -----------------------------------------------------------------------
+  // Delete logic
+  // -----------------------------------------------------------------------
+
+  /**
+   * Whether the current user may delete a specific evidence item.
+   * This is a UX gate only — backend authorization is authoritative.
+   */
+  function canDelete(item) {
+    if (role === 'ADMIN') return true;
+    if (role === 'INVESTIGATOR' && item.registered === false) return true;
+    return false;
+  }
+
+  const handleDeleteClick = (id) => {
+    setConfirmDeleteId(id);
+  };
+
+  const handleDeleteCancel = () => {
+    setConfirmDeleteId(null);
+  };
+
+  const handleDeleteConfirm = async (id) => {
+    setConfirmDeleteId(null);
+    setDeletingId(id);
+    try {
+      await deleteEvidence(id);
+      setEvidence((prev) => prev.filter((e) => e.id !== id));
+      toast.success('Evidence deleted', {
+        description: `Evidence #${id} has been removed from the vault.`,
+      });
+    } catch (error) {
+      const status = error.response?.status;
+      let message;
+      if (status === 403) {
+        message = 'You do not have permission to delete this evidence.';
+      } else if (status === 404) {
+        message = 'Evidence not found. It may have already been deleted.';
+      } else {
+        message =
+          error.response?.data?.message ||
+          error.message ||
+          'Could not delete evidence. Please try again.';
+      }
+      toast.error('Deletion failed', { description: message });
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  // -----------------------------------------------------------------------
+  // Filtering / sorting (client-side over fetched list)
+  // -----------------------------------------------------------------------
+
   const filteredEvidence = useMemo(() => {
     let result = [...evidence];
 
@@ -136,8 +192,8 @@ export default function EvidenceVaultPage() {
         (item) =>
           item.id.toLowerCase().includes(q) ||
           item.title.toLowerCase().includes(q) ||
-          item.originalFilename.toLowerCase().includes(q) ||
-          item.uploadedBy.toLowerCase().includes(q) ||
+          (item.originalFilename || '').toLowerCase().includes(q) ||
+          (item.uploadedBy || '').toLowerCase().includes(q) ||
           item.tags.some((tag) => tag.toLowerCase().includes(q))
       );
     }
@@ -146,8 +202,9 @@ export default function EvidenceVaultPage() {
       result = result.filter((item) => item.evidenceType === typeFilter);
     }
 
-    if (integrityFilter !== 'ALL') {
-      result = result.filter((item) => item.integrityStatus === integrityFilter);
+    if (registrationFilter !== 'ALL') {
+      const wantRegistered = registrationFilter === 'REGISTERED';
+      result = result.filter((item) => item.registered === wantRegistered);
     }
 
     result.sort((a, b) => {
@@ -157,14 +214,15 @@ export default function EvidenceVaultPage() {
     });
 
     return result;
-  }, [evidence, searchQuery, typeFilter, integrityFilter, sortOrder]);
+  }, [evidence, searchQuery, typeFilter, registrationFilter, sortOrder]);
 
-  const hasActiveFilters = typeFilter !== 'ALL' || integrityFilter !== 'ALL' || searchQuery.trim();
+  const hasActiveFilters =
+    typeFilter !== 'ALL' || registrationFilter !== 'ALL' || searchQuery.trim();
 
   const clearFilters = () => {
     setSearchQuery('');
     setTypeFilter('ALL');
-    setIntegrityFilter('ALL');
+    setRegistrationFilter('ALL');
     setSortOrder('newest');
   };
 
@@ -174,13 +232,83 @@ export default function EvidenceVaultPage() {
     });
   };
 
-  const verifiedCount = evidence.filter((e) => e.integrityStatus === INTEGRITY_STATUS.VERIFIED).length;
-  const pendingCount = evidence.filter((e) => e.integrityStatus === INTEGRITY_STATUS.PENDING).length;
+  const registeredCount = evidence.filter((e) => e.registered === true).length;
+  const unregisteredCount = evidence.filter((e) => e.registered === false).length;
+
+  // -----------------------------------------------------------------------
+  // Render helpers
+  // -----------------------------------------------------------------------
+
+  function ActionButtons({ item, fullWidth = false }) {
+    const isDeleting = deletingId === item.id;
+    const isConfirming = confirmDeleteId === item.id;
+    const showDelete = canDelete(item);
+
+    return (
+      <div className={cn('flex gap-2', fullWidth && 'w-full flex-col')}>
+        <Button
+          variant="secondary"
+          size="sm"
+          className={cn('gap-2', fullWidth && 'w-full')}
+          onClick={() => handleViewDetails(item)}
+          disabled={isDeleting}
+        >
+          <Eye className="h-3.5 w-3.5" />
+          View Details
+        </Button>
+
+        {showDelete && !isConfirming && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
+              'gap-2 text-danger hover:bg-danger/10 hover:text-danger',
+              fullWidth && 'w-full'
+            )}
+            onClick={() => handleDeleteClick(item.id)}
+            disabled={isDeleting}
+          >
+            {isDeleting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="h-3.5 w-3.5" />
+            )}
+            {isDeleting ? 'Deleting...' : 'Delete'}
+          </Button>
+        )}
+
+        {showDelete && isConfirming && (
+          <div className={cn('flex gap-1', fullWidth && 'w-full')}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-1.5 text-danger hover:bg-danger/10 hover:text-danger"
+              onClick={() => handleDeleteConfirm(item.id)}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Confirm
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleDeleteCancel}
+            >
+              Cancel
+            </Button>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // -----------------------------------------------------------------------
+  // Main render
+  // -----------------------------------------------------------------------
 
   return (
     <AppLayout
       title="Evidence Vault"
-      subtitle="Central repository for all uploaded digital evidence — Coimbatore City Police"
+      subtitle="Central repository for all uploaded digital evidence"
     >
       <div className="mx-auto max-w-6xl space-y-6">
         {/* Summary strip */}
@@ -190,12 +318,12 @@ export default function EvidenceVaultPage() {
             <p className="mt-1 text-2xl font-semibold tabular-nums text-foreground">{evidence.length}</p>
           </Card>
           <Card className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-muted">Verified</p>
-            <p className="mt-1 text-2xl font-semibold tabular-nums text-success">{verifiedCount}</p>
+            <p className="text-[10px] font-medium uppercase tracking-wider text-muted">Registered</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums text-success">{registeredCount}</p>
           </Card>
           <Card className="p-4">
-            <p className="text-[10px] font-medium uppercase tracking-wider text-muted">Pending Verification</p>
-            <p className="mt-1 text-2xl font-semibold tabular-nums text-accent-secondary">{pendingCount}</p>
+            <p className="text-[10px] font-medium uppercase tracking-wider text-muted">Unregistered</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums text-accent-secondary">{unregisteredCount}</p>
           </Card>
         </div>
 
@@ -238,14 +366,14 @@ export default function EvidenceVaultPage() {
                   </SelectContent>
                 </Select>
 
-                <Select value={integrityFilter} onValueChange={setIntegrityFilter}>
-                  <SelectTrigger aria-label="Filter by integrity status">
-                    <SelectValue placeholder="Integrity Status" />
+                <Select value={registrationFilter} onValueChange={setRegistrationFilter}>
+                  <SelectTrigger aria-label="Filter by registration status">
+                    <SelectValue placeholder="Registration Status" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ALL">All Statuses</SelectItem>
-                    <SelectItem value="VERIFIED">Verified</SelectItem>
-                    <SelectItem value="PENDING">Pending</SelectItem>
+                    <SelectItem value="REGISTERED">Registered</SelectItem>
+                    <SelectItem value="UNREGISTERED">Unregistered</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -274,6 +402,11 @@ export default function EvidenceVaultPage() {
         {/* Results */}
         {loading ? (
           <PageLoader message="Loading evidence repository..." />
+        ) : fetchError ? (
+          <div className="flex h-48 flex-col items-center justify-center gap-3 rounded-sm border border-border bg-card text-center">
+            <p className="text-sm text-danger">{fetchError}</p>
+            <Button variant="secondary" onClick={loadEvidence}>Retry</Button>
+          </div>
         ) : filteredEvidence.length === 0 ? (
           <EmptyState
             icon={Archive}
@@ -312,9 +445,9 @@ export default function EvidenceVaultPage() {
                           </div>
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <span className="font-mono text-xs font-medium text-accent">{item.id}</span>
-                              <Badge variant="outline">{item.evidenceType}</Badge>
-                              <IntegrityBadge status={item.integrityStatus} />
+                              <span className="font-mono text-xs font-medium text-accent">#{item.id}</span>
+                              <Badge variant="outline">{item.evidenceType || '—'}</Badge>
+                              <RegistrationBadge registered={item.registered} />
                             </div>
                             <h3 className="mt-1 truncate text-sm font-medium text-foreground">{item.title}</h3>
                             <p className="mt-0.5 truncate text-xs text-muted font-mono">{item.originalFilename}</p>
@@ -328,9 +461,13 @@ export default function EvidenceVaultPage() {
                           </div>
                           <div>
                             <span className="text-muted">Uploaded By</span>
-                            <p className="mt-0.5 text-foreground">{item.uploadedBy}</p>
+                            <p className="mt-0.5 text-foreground">{item.uploadedBy || '—'}</p>
                           </div>
-                          <div className="col-span-2 xl:col-span-2">
+                          <div>
+                            <span className="text-muted">File Size</span>
+                            <p className="mt-0.5 text-foreground">{item.fileSizeBytes ? formatFileSize(item.fileSizeBytes) : '—'}</p>
+                          </div>
+                          <div>
                             <span className="text-muted">Tags</span>
                             <div className="mt-1 flex flex-wrap gap-1">
                               {item.tags.length > 0 ? (
@@ -351,15 +488,7 @@ export default function EvidenceVaultPage() {
                       </div>
 
                       <div className="flex items-center">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          className="gap-2"
-                          onClick={() => handleViewDetails(item)}
-                        >
-                          <Eye className="h-3.5 w-3.5" />
-                          View Details
-                        </Button>
+                        <ActionButtons item={item} />
                       </div>
                     </div>
 
@@ -371,8 +500,8 @@ export default function EvidenceVaultPage() {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-1.5">
-                            <span className="font-mono text-xs font-medium text-accent">{item.id}</span>
-                            <IntegrityBadge status={item.integrityStatus} />
+                            <span className="font-mono text-xs font-medium text-accent">#{item.id}</span>
+                            <RegistrationBadge registered={item.registered} />
                           </div>
                           <h3 className="mt-1 text-sm font-medium text-foreground">{item.title}</h3>
                           <p className="mt-0.5 truncate text-xs text-muted font-mono">{item.originalFilename}</p>
@@ -382,11 +511,11 @@ export default function EvidenceVaultPage() {
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div>
                           <span className="text-muted">Type</span>
-                          <p className="mt-0.5 text-foreground">{item.evidenceType}</p>
+                          <p className="mt-0.5 text-foreground">{item.evidenceType || '—'}</p>
                         </div>
                         <div>
                           <span className="text-muted">Uploaded By</span>
-                          <p className="mt-0.5 text-foreground truncate">{item.uploadedBy}</p>
+                          <p className="mt-0.5 text-foreground truncate">{item.uploadedBy || '—'}</p>
                         </div>
                         <div className="col-span-2">
                           <span className="text-muted">Upload Date</span>
@@ -407,15 +536,7 @@ export default function EvidenceVaultPage() {
                         </div>
                       )}
 
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        className="w-full gap-2"
-                        onClick={() => handleViewDetails(item)}
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                        View Details
-                      </Button>
+                      <ActionButtons item={item} fullWidth />
                     </div>
                   </CardContent>
                 </Card>

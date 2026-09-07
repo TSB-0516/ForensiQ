@@ -17,5 +17,5 @@ public interface EvidenceRepository extends JpaRepository<Evidence, Long> {
 
     // Phase II — once InvestigationCase exists, evidence will mostly be
     // browsed within a case rather than globally.
-    List<Evidence> findByCaseId(Long caseId);
+    List<Evidence> findByInvestigationCaseId(Long caseId);
 }

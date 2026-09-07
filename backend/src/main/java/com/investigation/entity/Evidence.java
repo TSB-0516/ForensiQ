@@ -1,11 +1,22 @@
 package com.investigation.entity;
 
-import com.investigation.entity.enums.EvidenceType;
-import jakarta.persistence.*;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+
+import com.investigation.entity.enums.EvidenceType;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "evidence")
@@ -25,12 +36,6 @@ public class Evidence {
     private String uploadedBy; // email of investigator
 
     private boolean registered = false;
-
-    // Phase II placeholder: will become a @ManyToOne to InvestigationCase.
-    // Kept as a plain nullable FK-style column now so adding the real
-    // relationship later is a type change, not a schema migration touching
-    // every existing row.
-    private Long caseId;
 
     // ---- Filled during Evidence Registration ----
     private String title;
@@ -52,71 +57,183 @@ public class Evidence {
     @Column(length = 2000)
     private String additionalRemarks;
 
+    // Phase II: real relationship to InvestigationCase. Nullable — evidence can
+// exist unassigned to any case (see Evidence Registration lifecycle notes).
+// ON DELETE SET NULL at the DB level: deleting a case must not delete or
+// orphan-fail the evidence attached to it.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "case_id")
+    private InvestigationCase investigationCase;
+
     public Evidence() {
     }
 
     // ---- Getters & Setters ----
+    public Long getId() {
+        return id;
+    }
 
-    public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
+    public void setId(Long id) {
+        this.id = id;
+    }
 
-    public String getOriginalFilename() { return originalFilename; }
-    public void setOriginalFilename(String originalFilename) { this.originalFilename = originalFilename; }
+    public String getOriginalFilename() {
+        return originalFilename;
+    }
 
-    public String getStoredFilename() { return storedFilename; }
-    public void setStoredFilename(String storedFilename) { this.storedFilename = storedFilename; }
+    public void setOriginalFilename(String originalFilename) {
+        this.originalFilename = originalFilename;
+    }
 
-    public String getStoragePath() { return storagePath; }
-    public void setStoragePath(String storagePath) { this.storagePath = storagePath; }
+    public String getStoredFilename() {
+        return storedFilename;
+    }
 
-    public String getSha256Hash() { return sha256Hash; }
-    public void setSha256Hash(String sha256Hash) { this.sha256Hash = sha256Hash; }
+    public void setStoredFilename(String storedFilename) {
+        this.storedFilename = storedFilename;
+    }
 
-    public Long getFileSizeBytes() { return fileSizeBytes; }
-    public void setFileSizeBytes(Long fileSizeBytes) { this.fileSizeBytes = fileSizeBytes; }
+    public String getStoragePath() {
+        return storagePath;
+    }
 
-    public LocalDateTime getUploadTimestamp() { return uploadTimestamp; }
-    public void setUploadTimestamp(LocalDateTime uploadTimestamp) { this.uploadTimestamp = uploadTimestamp; }
+    public void setStoragePath(String storagePath) {
+        this.storagePath = storagePath;
+    }
 
-    public String getUploadedBy() { return uploadedBy; }
-    public void setUploadedBy(String uploadedBy) { this.uploadedBy = uploadedBy; }
+    public String getSha256Hash() {
+        return sha256Hash;
+    }
 
-    public boolean isRegistered() { return registered; }
-    public void setRegistered(boolean registered) { this.registered = registered; }
+    public void setSha256Hash(String sha256Hash) {
+        this.sha256Hash = sha256Hash;
+    }
 
-    public Long getCaseId() { return caseId; }
-    public void setCaseId(Long caseId) { this.caseId = caseId; }
+    public Long getFileSizeBytes() {
+        return fileSizeBytes;
+    }
 
-    public String getTitle() { return title; }
-    public void setTitle(String title) { this.title = title; }
+    public void setFileSizeBytes(Long fileSizeBytes) {
+        this.fileSizeBytes = fileSizeBytes;
+    }
 
-    public String getDescription() { return description; }
-    public void setDescription(String description) { this.description = description; }
+    public LocalDateTime getUploadTimestamp() {
+        return uploadTimestamp;
+    }
 
-    public EvidenceType getEvidenceType() { return evidenceType; }
-    public void setEvidenceType(EvidenceType evidenceType) { this.evidenceType = evidenceType; }
+    public void setUploadTimestamp(LocalDateTime uploadTimestamp) {
+        this.uploadTimestamp = uploadTimestamp;
+    }
 
-    public LocalDate getCollectionDate() { return collectionDate; }
-    public void setCollectionDate(LocalDate collectionDate) { this.collectionDate = collectionDate; }
+    public String getUploadedBy() {
+        return uploadedBy;
+    }
 
-    public LocalTime getCollectionTime() { return collectionTime; }
-    public void setCollectionTime(LocalTime collectionTime) { this.collectionTime = collectionTime; }
+    public void setUploadedBy(String uploadedBy) {
+        this.uploadedBy = uploadedBy;
+    }
 
-    public String getCollectedBy() { return collectedBy; }
-    public void setCollectedBy(String collectedBy) { this.collectedBy = collectedBy; }
+    public boolean isRegistered() {
+        return registered;
+    }
 
-    public String getCollectionLocation() { return collectionLocation; }
-    public void setCollectionLocation(String collectionLocation) { this.collectionLocation = collectionLocation; }
+    public void setRegistered(boolean registered) {
+        this.registered = registered;
+    }
 
-    public String getRelatedSuspect() { return relatedSuspect; }
-    public void setRelatedSuspect(String relatedSuspect) { this.relatedSuspect = relatedSuspect; }
+    public InvestigationCase getInvestigationCase() {
+        return investigationCase;
+    }
 
-    public String getRelatedWitness() { return relatedWitness; }
-    public void setRelatedWitness(String relatedWitness) { this.relatedWitness = relatedWitness; }
+    public void setInvestigationCase(InvestigationCase investigationCase) {
+        this.investigationCase = investigationCase;
+    }
 
-    public String getInvestigationTags() { return investigationTags; }
-    public void setInvestigationTags(String investigationTags) { this.investigationTags = investigationTags; }
+    public String getTitle() {
+        return title;
+    }
 
-    public String getAdditionalRemarks() { return additionalRemarks; }
-    public void setAdditionalRemarks(String additionalRemarks) { this.additionalRemarks = additionalRemarks; }
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public EvidenceType getEvidenceType() {
+        return evidenceType;
+    }
+
+    public void setEvidenceType(EvidenceType evidenceType) {
+        this.evidenceType = evidenceType;
+    }
+
+    public LocalDate getCollectionDate() {
+        return collectionDate;
+    }
+
+    public void setCollectionDate(LocalDate collectionDate) {
+        this.collectionDate = collectionDate;
+    }
+
+    public LocalTime getCollectionTime() {
+        return collectionTime;
+    }
+
+    public void setCollectionTime(LocalTime collectionTime) {
+        this.collectionTime = collectionTime;
+    }
+
+    public String getCollectedBy() {
+        return collectedBy;
+    }
+
+    public void setCollectedBy(String collectedBy) {
+        this.collectedBy = collectedBy;
+    }
+
+    public String getCollectionLocation() {
+        return collectionLocation;
+    }
+
+    public void setCollectionLocation(String collectionLocation) {
+        this.collectionLocation = collectionLocation;
+    }
+
+    public String getRelatedSuspect() {
+        return relatedSuspect;
+    }
+
+    public void setRelatedSuspect(String relatedSuspect) {
+        this.relatedSuspect = relatedSuspect;
+    }
+
+    public String getRelatedWitness() {
+        return relatedWitness;
+    }
+
+    public void setRelatedWitness(String relatedWitness) {
+        this.relatedWitness = relatedWitness;
+    }
+
+    public String getInvestigationTags() {
+        return investigationTags;
+    }
+
+    public void setInvestigationTags(String investigationTags) {
+        this.investigationTags = investigationTags;
+    }
+
+    public String getAdditionalRemarks() {
+        return additionalRemarks;
+    }
+
+    public void setAdditionalRemarks(String additionalRemarks) {
+        this.additionalRemarks = additionalRemarks;
+    }
 }

@@ -30,15 +30,16 @@ export async function registerEvidence(evidenceId, data) {
     collectionDate: data.collectionDate,
     collectionTime: data.collectionTime,
     collectedBy: data.collectedBy,
-    collectionLocation: data.location,
+    collectionLocation: data.collectionLocation,
     relatedSuspect: data.relatedSuspect || null,
     relatedWitness: data.relatedWitness || null,
-    investigationTags: data.tags || null,
-    additionalRemarks: data.remarks || null,
+    investigationTags: data.investigationTags || null,
+    additionalRemarks: data.additionalRemarks || null,
   };
 
   const response = await api.put(
     `/evidence/${evidenceId}/register`,
+
     requestData
   );
 
@@ -59,3 +60,8 @@ export async function getEvidenceById(id) {
   const response = await api.get(`/evidence/${id}`);
   return response.data;
 }
+
+export async function deleteEvidence(id) {
+  // Backend returns 204 No Content on success. No response body.
+  await api.delete(`/evidence/${id}`);
+}

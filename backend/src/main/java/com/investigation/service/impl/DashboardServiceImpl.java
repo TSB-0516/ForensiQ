@@ -21,7 +21,7 @@ public class DashboardServiceImpl implements DashboardService {
     private static final int RECENT_LIMIT = 5;
 
     public DashboardServiceImpl(UserRepository userRepository,
-                                 EvidenceRepository evidenceRepository) {
+            EvidenceRepository evidenceRepository) {
         this.userRepository = userRepository;
         this.evidenceRepository = evidenceRepository;
     }
@@ -85,7 +85,7 @@ public class DashboardServiceImpl implements DashboardService {
                 e.getUploadTimestamp(),
                 e.getUploadedBy(),
                 e.isRegistered(),
-                e.getCaseId(),
+                e.getInvestigationCase() != null ? e.getInvestigationCase().getId() : null,
                 e.getTitle(),
                 e.getDescription(),
                 e.getEvidenceType(),
