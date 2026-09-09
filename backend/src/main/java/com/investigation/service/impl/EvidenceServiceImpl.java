@@ -12,10 +12,12 @@ import com.investigation.dto.request.EvidenceRegistrationRequest;
 import com.investigation.dto.response.EvidenceResponse;
 import com.investigation.dto.response.EvidenceUploadResponse;
 import com.investigation.entity.Evidence;
+import com.investigation.entity.enums.CustodyAction;
 import com.investigation.entity.enums.EvidenceType;
 import com.investigation.exception.ResourceNotFoundException;
 import com.investigation.exception.UnauthorizedActionException;
 import com.investigation.repository.EvidenceRepository;
+import com.investigation.service.CustodyLogService;
 import com.investigation.service.EvidenceService;
 import com.investigation.service.FileStorageService;
 import com.investigation.util.AllowedFileTypes;
@@ -27,11 +29,16 @@ public class EvidenceServiceImpl implements EvidenceService {
     private final EvidenceRepository evidenceRepository;
     private final FileStorageService fileStorageService;
 
-    public EvidenceServiceImpl(EvidenceRepository evidenceRepository,
-            FileStorageService fileStorageService) {
-        this.evidenceRepository = evidenceRepository;
-        this.fileStorageService = fileStorageService;
-    }
+        // constructor — add the dependency
+private final CustodyLogService custodyLogService;
+
+public EvidenceServiceImpl(EvidenceRepository evidenceRepository,
+        FileStorageService fileStorageService,
+        CustodyLogService custodyLogService) {
+    this.evidenceRepository = evidenceRepository;
+    this.fileStorageService = fileStorageService;
+    this.custodyLogService = custodyLogService;
+}
 
     @Override
     public EvidenceUploadResponse uploadEvidence(MultipartFile file, String uploadedByEmail) {
@@ -59,7 +66,7 @@ public class EvidenceServiceImpl implements EvidenceService {
         evidence.setRegistered(false);
 
         Evidence saved = evidenceRepository.save(evidence);
-
+        custodyLogService.logAction(saved.getId(), CustodyAction.UPLOADED, uploadedByEmail, null);
         EvidenceType suggestedType = EvidenceType.guessFromFilename(saved.getOriginalFilename());
 
         return new EvidenceUploadResponse(
@@ -105,7 +112,7 @@ public class EvidenceServiceImpl implements EvidenceService {
         evidence.setRegistered(true);
 
         Evidence saved = evidenceRepository.save(evidence);
-
+        custodyLogService.logAction(saved.getId(), CustodyAction.REGISTERED, requesterEmail, null);
         return toResponse(saved);
     }
 
@@ -180,4 +187,5 @@ public class EvidenceServiceImpl implements EvidenceService {
         evidenceRepository.delete(evidence);
         fileStorageService.delete(evidence.getStoredFilename());
     }
+
 }

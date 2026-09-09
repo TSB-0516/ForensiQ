@@ -10,6 +10,9 @@ import EvidenceUploadPage from '@/pages/EvidenceUploadPage';
 import EvidenceRegistrationPage from '@/pages/EvidenceRegistrationPage';
 import EvidenceVaultPage from '@/pages/EvidenceVaultPage';
 import ProfilePage from '@/pages/ProfilePage';
+import CaseListPage from '@/pages/CaseListPage';
+import CreateCasePage from '@/pages/CreateCasePage';
+import CaseDetailsPage from '@/pages/CaseDetailsPage';
 
 export default function App() {
   return (
@@ -48,6 +51,31 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={['INVESTIGATOR']}>
                 <InvestigatorDashboard />
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/cases"
+            element={
+              <ProtectedRoute>
+                <CaseListPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cases/new"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN', 'INVESTIGATOR']}>
+                <CreateCasePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cases/:id"
+            element={
+              <ProtectedRoute>
+                <CaseDetailsPage />
               </ProtectedRoute>
             }
           />

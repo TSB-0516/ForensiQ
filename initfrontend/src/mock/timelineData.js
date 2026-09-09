@@ -1,0 +1,93 @@
+export const timelineData = {
+  1: [
+    {
+      eventId: 'TL-001',
+      caseId: 1,
+      timestamp: '2023-01-05T08:00:00Z',
+      type: 'Case Created',
+      title: 'Case Created',
+      description: 'Investigation case opened by admin.',
+      performedBy: 'admin@example.com',
+      role: 'ADMIN',
+    },
+    {
+      eventId: 'TL-002',
+      caseId: 1,
+      timestamp: '2023-01-09T07:45:00Z',
+      type: 'Evidence Added',
+      title: 'Email Evidence Added',
+      description: 'Added EV-00044 (suspicious email) to the case.',
+      performedBy: 'alice@example.com',
+      role: 'INVESTIGATOR',
+      relatedEvidenceId: 'EV-00044',
+    },
+    {
+      eventId: 'TL-003',
+      caseId: 1,
+      timestamp: '2023-01-10T09:15:00Z',
+      type: 'Evidence Added',
+      title: 'Financial Transaction Evidence Added',
+      description: 'Added EV-00042 (financial transaction PDF) to the case.',
+      performedBy: 'alice@example.com',
+      role: 'INVESTIGATOR',
+      relatedEvidenceId: 'EV-00042',
+    },
+    {
+      eventId: 'TL-004',
+      caseId: 1,
+      timestamp: '2023-01-11T08:20:00Z',
+      type: 'Evidence Added',
+      title: 'Bank Statement Evidence Added',
+      description: 'Added EV-00043 (bank statement PDF) to the case.',
+      performedBy: 'alice@example.com',
+      role: 'INVESTIGATOR',
+      relatedEvidenceId: 'EV-00043',
+    },
+    {
+      eventId: 'TL-005',
+      caseId: 1,
+      timestamp: '2023-01-12T14:30:00Z',
+      type: 'Investigator Note',
+      title: 'Initial Lead Identified',
+      description: 'Potential fraud pattern identified in the transaction PDF.',
+      performedBy: 'bob@example.com',
+      role: 'ADMIN',
+    },
+    {
+      eventId: 'TL-006',
+      caseId: 1,
+      timestamp: '2023-01-13T09:00:00Z',
+      type: 'Investigation Milestone',
+      title: 'Forensic Examination Started',
+      description: 'Forensic analysis began on EV-00042.',
+      performedBy: 'dave@example.com',
+      role: 'FORENSIC_ANALYST',
+    },
+    {
+      eventId: 'TL-007',
+      caseId: 1,
+      timestamp: '2023-01-15T16:45:00Z',
+      type: 'Investigation Milestone',
+      title: 'Forensic Examination Completed',
+      description: 'Forensic analysis completed for EV-00042; findings added.',
+      performedBy: 'dave@example.com',
+      role: 'FORENSIC_ANALYST',
+    },
+    {
+      eventId: 'TL-008',
+      caseId: 1,
+      timestamp: '2023-01-18T12:00:00Z',
+      type: 'Case Status Changed',
+      title: 'Case Closed',
+      description: 'All evidence reviewed; case marked as CLOSED.',
+      performedBy: 'bob@example.com',
+      role: 'ADMIN',
+    },
+  ],
+};
+
+export function getTimelineEvents(caseId) {
+  // Accept numeric ID or string case number for compatibility
+  const key = typeof caseId === 'number' ? caseId : caseId;
+  return timelineData[key] || [];
+}

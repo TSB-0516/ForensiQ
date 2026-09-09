@@ -34,12 +34,14 @@ export const EVIDENCE_TYPES = [
 export const NAV_ITEMS = {
   admin: [
     { label: 'Dashboard', path: '/admin/dashboard', icon: 'LayoutDashboard', section: 'main' },
+    { label: 'Case Management', path: '/cases', icon: 'Briefcase', section: 'main' },
     { label: 'Evidence Vault', path: '/evidence/vault', icon: 'Archive', section: 'evidence' },
     { label: 'Upload Evidence', path: '/evidence/upload', icon: 'Upload', section: 'evidence' },
     { label: 'Profile', path: '/profile', icon: 'User', section: 'main' },
   ],
   investigator: [
     { label: 'Dashboard', path: '/investigator/dashboard', icon: 'LayoutDashboard', section: 'main' },
+    { label: 'Case Management', path: '/cases', icon: 'Briefcase', section: 'main' },
     { label: 'Evidence Vault', path: '/evidence/vault', icon: 'Archive', section: 'evidence' },
     { label: 'Upload Evidence', path: '/evidence/upload', icon: 'Upload', section: 'evidence' },
     { label: 'Profile', path: '/profile', icon: 'User', section: 'main' },

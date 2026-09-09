@@ -1,5 +1,13 @@
 package com.investigation.entity.enums;
 
-public class CustodyAction {
-    
+public enum CustodyAction {
+    UPLOADED,
+    REGISTERED,
+    VIEWED,
+    DOWNLOADED,
+    TRANSFERRED,
+    RECEIVED,
+    EXAMINED,
+    RETURNED,
+    COURT_SUBMISSION
 }
