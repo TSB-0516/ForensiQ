@@ -10,4 +10,6 @@ public interface CustodyLogRepository extends JpaRepository<CustodyLog, Long> {
 
     // Ordered ascending — chain order matters for verification and display.
     List<CustodyLog> findByEvidenceIdOrderByTimestampAsc(Long evidenceId);
+
+    List<CustodyLog> findByEvidence_InvestigationCase_IdOrderByTimestampAsc(Long caseId);
 }

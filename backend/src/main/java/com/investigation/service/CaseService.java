@@ -14,5 +14,7 @@ public interface CaseService {
 
     List<CaseResponse> getAllCases();
 
+    List<CaseResponse> getMyCases(String email);
+
     CaseResponse updateStatus(Long id, CaseStatusUpdateRequest request);
 }

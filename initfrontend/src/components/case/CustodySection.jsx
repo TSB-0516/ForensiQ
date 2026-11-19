@@ -1,58 +1,72 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { cn, formatDateTime } from '@/utils/helpers';
-import { getCaseEvidence } from '@/mock/caseEvidenceData';
-import { getCustodyHistory } from '@/mock/custodyData';
+import { getCaseCustody } from '@/services/caseService';
+import { toast } from 'sonner';
+import { PageLoader } from '@/components/ui/spinner';
 
 export default function CustodySection({ caseId }) {
-  const evidenceIds = getCaseEvidence(caseId);
-  const [selectedId, setSelectedId] = useState(evidenceIds[0] || '');
-  const custodyEvents = selectedId ? getCustodyHistory(selectedId) : [];
+  const [custodyEvents, setCustodyEvents] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchCustody = async () => {
+      try {
+        setLoading(true);
+        const data = await getCaseCustody(caseId);
+        setCustodyEvents(data);
+      } catch (error) {
+        toast.error('Failed to load custody history');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchCustody();
+  }, [caseId]);
+
+  if (loading) return <PageLoader message="Loading chain of custody..." />;
+
+  if (custodyEvents.length === 0) {
+    return <p className="text-muted">No custody events recorded for this case.</p>;
+  }
 
   return (
     <div className="space-y-6">
-      <Select value={selectedId} onValueChange={setSelectedId}>
-        <SelectTrigger className="w-[250px]">
-          <SelectValue placeholder="Select evidence" />
-        </SelectTrigger>
-        <SelectContent>
-          {evidenceIds.map((id) => (
-            <SelectItem key={id} value={id}>
-              {id}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-
-      {custodyEvents.length === 0 ? (
-        <p className="text-muted">No custody events for the selected evidence.</p>
-      ) : (
-        <div className="space-y-4">
-          {custodyEvents.map((event) => (
-            <Card key={event.eventId} className="animate-fade-in">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
+      <div className="space-y-4">
+        {custodyEvents.map((event) => (
+          <Card key={event.custodyLogId} className="animate-fade-in border-l-4 border-l-accent">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center justify-between text-base">
+                <div className="flex items-center gap-2">
                   <Badge variant="secondary">{event.action}</Badge>
-                  <span>{formatDateTime(event.timestamp)}</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <p className={cn('text-sm', 'text-muted')}>Performed By: {event.performedBy}</p>
-                <p className={cn('text-sm', 'text-muted')}>Role: {event.role}</p>
-                {event.location && <p className={cn('text-sm', 'text-muted')}>Location: {event.location}</p>}
-                {event.fromLocation && event.toLocation && (
-                  <p className={cn('text-sm', 'text-muted')}>
-                    Transfer: {event.fromLocation} → {event.toLocation}
-                  </p>
+                  <span className="text-foreground">Evidence: {event.evidenceTitle}</span>
+                  <span className="text-xs text-muted ml-2">ID: {event.evidenceId}</span>
+                </div>
+                <span className="text-sm font-normal text-muted">{formatDateTime(event.timestamp)}</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              <p className={cn('text-sm', 'text-muted')}>Performed By: {event.performedBy}</p>
+              {event.remarks && <p className="text-sm mt-2">{event.remarks}</p>}
+              <div className="mt-4 pt-3 border-t border-border grid gap-2">
+                {event.previousHash && (
+                  <div>
+                    <p className="text-xs text-muted">Previous Hash</p>
+                    <p className="font-mono text-xs break-all text-muted-foreground">{event.previousHash}</p>
+                  </div>
                 )}
-                <p className="text-sm">{event.description}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+                {event.currentHash && (
+                  <div>
+                    <p className="text-xs text-muted">Current Hash</p>
+                    <p className="font-mono text-xs break-all text-foreground">{event.currentHash}</p>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
     </div>
   );
 }

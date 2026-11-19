@@ -24,10 +24,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { getAllCases } from '@/services/caseService';
+import { getAllCases, getMyCases } from '@/services/caseService';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { cn, formatDateTime } from '@/utils/helpers';
+import { cn, formatDateTime, isInvestigatorRole } from '@/utils/helpers';
 
 const STATUS_OPTIONS = ['OPEN', 'IN_PROGRESS', 'CLOSED'];
 
@@ -56,6 +56,7 @@ export default function CaseListPage() {
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [sortOrder, setSortOrder] = useState('newest');
 
+  const isInvestigator = isInvestigatorRole(role);
   const canCreateCase = role === 'ADMIN' || role === 'INVESTIGATOR';
 
   const loadCases = useCallback(async (isRefresh = false) => {
@@ -63,7 +64,7 @@ export default function CaseListPage() {
     setFetchError(null);
 
     try {
-      const data = await getAllCases();
+      const data = isInvestigator ? await getMyCases() : await getAllCases();
       setCases(data);
       if (isRefresh) toast.success('Cases refreshed');
     } catch (error) {
@@ -77,7 +78,7 @@ export default function CaseListPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isInvestigator]);
 
   useEffect(() => {
     loadCases();
@@ -133,7 +134,7 @@ export default function CaseListPage() {
   return (
     <AppLayout
       title="Case Management"
-      subtitle="Centralized registry for all active and archived investigations"
+      subtitle={isInvestigator ? 'Cases assigned to me' : 'Centralized registry for all active and archived investigations'}
     >
       <div className="mx-auto max-w-6xl space-y-6">
         {/* Summary strip */}
@@ -236,11 +237,13 @@ export default function CaseListPage() {
         ) : filteredCases.length === 0 ? (
           <EmptyState
             icon={FolderOpen}
-            title={hasActiveFilters ? 'No matching cases found' : 'No cases available'}
+            title={hasActiveFilters ? 'No matching cases found' : isInvestigator ? 'No cases assigned' : 'No cases available'}
             description={
               hasActiveFilters
                 ? 'Try adjusting your search or filter criteria.'
-                : 'Get started by creating a new case for investigation.'
+                : isInvestigator
+                  ? 'You currently have no investigations assigned to you.'
+                  : 'Get started by creating a new case for investigation.'
             }
             action={hasActiveFilters ? clearFilters : canCreateCase ? () => navigate('/cases/new') : undefined}
             actionLabel={hasActiveFilters ? 'Clear Filters' : canCreateCase ? 'Create Case' : undefined}

@@ -25,10 +25,11 @@ import {
 import { getCaseById, updateCaseStatus } from '@/services/caseService';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { cn, formatDateTime } from '@/utils/helpers';
+import { cn, formatDateTime, isAdminRole } from '@/utils/helpers';
 import EvidenceSection from '@/components/case/EvidenceSection';
 import CustodySection from '@/components/case/CustodySection';
 import TimelineSection from '@/components/case/TimelineSection';
+import AssignedInvestigators from '@/components/case/AssignedInvestigators';
 
 const STATUS_OPTIONS = ['OPEN', 'IN_PROGRESS', 'CLOSED'];
 
@@ -75,7 +76,7 @@ export default function CaseDetailsPage() {
   const [updatingStatus, setUpdatingStatus] = useState(false);
   const [showCloseConfirm, setShowCloseConfirm] = useState(false);
 
-  const canUpdateStatus = role === 'ADMIN' || role === 'INVESTIGATOR';
+  const canUpdateStatus = isAdminRole(role);
 
   const loadCase = useCallback(async () => {
     setLoading(true);
@@ -245,6 +246,10 @@ export default function CaseDetailsPage() {
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <DetailField label="Evidence Items" value={caseData.evidenceCount?.toString() || '0'} icon={File} />
               </div>
+
+              <div className="rounded-sm border border-border bg-sidebar p-4 mt-6">
+                <AssignedInvestigators caseId={caseData.id} />
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -258,7 +263,7 @@ export default function CaseDetailsPage() {
         </TabsContent>
 
         <TabsContent value="timeline" className="mt-4">
-          <TimelineSection caseId={caseData.id} />
+          <TimelineSection caseId={caseData.id} caseTitle={caseData.title} />
         </TabsContent>
       </Tabs>
     </AppLayout>

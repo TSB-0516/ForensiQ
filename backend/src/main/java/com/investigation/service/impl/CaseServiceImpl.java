@@ -56,6 +56,14 @@ public class CaseServiceImpl implements CaseService {
     }
 
     @Override
+    public List<CaseResponse> getMyCases(String email) {
+        return caseRepository.findCasesByInvestigatorEmail(email)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public CaseResponse updateStatus(Long id, CaseStatusUpdateRequest request) {
         InvestigationCase investigationCase = caseRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + id));

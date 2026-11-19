@@ -1,10 +1,11 @@
 package com.investigation.service;
 
+import java.util.List;
+
+import com.investigation.dto.response.CaseCustodyEventResponse;
 import com.investigation.dto.response.CustodyLogResponse;
 import com.investigation.dto.response.CustodyVerifyResponse;
 import com.investigation.entity.enums.CustodyAction;
-
-import java.util.List;
 
 public interface CustodyLogService {
 
@@ -14,4 +15,6 @@ public interface CustodyLogService {
     List<CustodyLogResponse> getLogForEvidence(Long evidenceId);
 
     CustodyVerifyResponse verifyChain(Long evidenceId);
+
+    List<CaseCustodyEventResponse> getCustodyForCase(Long caseId);
 }

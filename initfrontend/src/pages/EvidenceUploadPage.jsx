@@ -30,6 +30,8 @@ const FILE_CATEGORIES = [
 
 export default function EvidenceUploadPage() {
   const navigate = useNavigate();
+  const searchParams = new URLSearchParams(window.location.search);
+  const caseId = searchParams.get('caseId');
   const fileInputRef = useRef(null);
   const [isDragging, setIsDragging] = useState(false);
   const [selectedFile, setSelectedFile] = useState(null);
@@ -79,7 +81,7 @@ export default function EvidenceUploadPage() {
     try {
       toast.info('Uploading evidence...');
 
-      const response = await uploadEvidence(selectedFile);
+      const response = await uploadEvidence(selectedFile, caseId);
 
       console.log('Evidence uploaded successfully:', response);
 
@@ -88,6 +90,7 @@ export default function EvidenceUploadPage() {
       navigate('/evidence/register', {
         state: {
           evidenceId: response.evidenceId,
+          caseId: caseId,
           file: {
             name: response.originalFilename,
             size: response.fileSizeBytes,

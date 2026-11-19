@@ -5,13 +5,16 @@ export const INTEGRITY_STATUS = {
   PENDING: 'PENDING',
 };
 
-export async function uploadEvidence(file) {
+export async function uploadEvidence(file, caseId) {
   if (!file) {
     throw new Error('No file selected');
   }
 
   const formData = new FormData();
   formData.append('file', file);
+  if (caseId) {
+    formData.append('caseId', caseId);
+  }
 
   const response = await api.post('/evidence/upload', formData, {
     headers: {
@@ -64,4 +67,9 @@ export async function getEvidenceById(id) {
 export async function deleteEvidence(id) {
   // Backend returns 204 No Content on success. No response body.
   await api.delete(`/evidence/${id}`);
+}
+
+export async function assignEvidenceToCase(evidenceId, caseId) {
+  const response = await api.patch(`/evidence/${evidenceId}/case`, { caseId });
+  return response.data;
 }

@@ -13,6 +13,7 @@ import ProfilePage from '@/pages/ProfilePage';
 import CaseListPage from '@/pages/CaseListPage';
 import CreateCasePage from '@/pages/CreateCasePage';
 import CaseDetailsPage from '@/pages/CaseDetailsPage';
+import UserManagementPage from '@/pages/UserManagementPage';
 
 export default function App() {
   return (
@@ -43,6 +44,14 @@ export default function App() {
             element={
               <ProtectedRoute allowedRoles={['ADMIN']}>
                 <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <UserManagementPage />
               </ProtectedRoute>
             }
           />

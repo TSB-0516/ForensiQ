@@ -83,4 +83,21 @@ public void delete(String storedFilename) {
     }
 }
 
+@Override
+public InputStream loadFromDisk(String storedFilename) {
+    try {
+        Path uploadPath = Paths.get(uploadDir);
+        Path filePath = uploadPath.resolve(storedFilename);
+
+        if (!Files.exists(filePath)) {
+            throw new RuntimeException("Stored file not found on disk: " + storedFilename);
+        }
+
+        return Files.newInputStream(filePath);
+
+    } catch (IOException e) {
+        throw new RuntimeException("Failed to load stored file for verification", e);
+    }
+}
+
 }

@@ -18,6 +18,7 @@ import {
 
   Archive,
   Briefcase,
+  Users,
 } from 'lucide-react';
 
 import { useState } from 'react';
@@ -41,6 +42,7 @@ const iconMap = {
   User,
   Archive,
   Briefcase,
+  Users,
 };
 
 

@@ -14,6 +14,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Breadcrumb } from '@/components/ui/breadcrumb';
 import { createCase } from '@/services/caseService';
 import { useAuth } from '@/contexts/AuthContext';
+import { associateTimelineWithCase } from '@/mock/timelineData';
 
 const caseSchema = z.object({
   title: z.string().min(1, 'Case title is required').max(100, 'Title is too long'),
@@ -57,6 +58,7 @@ export default function CreateCasePage() {
     try {
       const result = await createCase(data);
       console.log('Case created successfully:', result);
+      associateTimelineWithCase({ ...result, title: result.title || data.title });
 
       setShowSuccess(true);
       toast.success('Case created successfully', {

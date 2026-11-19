@@ -11,11 +11,14 @@ import org.springframework.web.multipart.MultipartFile;
 import com.investigation.dto.request.EvidenceRegistrationRequest;
 import com.investigation.dto.response.EvidenceResponse;
 import com.investigation.dto.response.EvidenceUploadResponse;
+import com.investigation.dto.response.IntegrityVerificationResponse;
 import com.investigation.entity.Evidence;
+import com.investigation.entity.InvestigationCase;
 import com.investigation.entity.enums.CustodyAction;
 import com.investigation.entity.enums.EvidenceType;
 import com.investigation.exception.ResourceNotFoundException;
 import com.investigation.exception.UnauthorizedActionException;
+import com.investigation.repository.CaseRepository;
 import com.investigation.repository.EvidenceRepository;
 import com.investigation.service.CustodyLogService;
 import com.investigation.service.EvidenceService;
@@ -27,21 +30,25 @@ import com.investigation.util.HashUtil;
 public class EvidenceServiceImpl implements EvidenceService {
 
     private final EvidenceRepository evidenceRepository;
+    private final CaseRepository caseRepository;
     private final FileStorageService fileStorageService;
 
-        // constructor — add the dependency
-private final CustodyLogService custodyLogService;
+    // constructor — add the dependency
+    private final CustodyLogService custodyLogService;
 
-public EvidenceServiceImpl(EvidenceRepository evidenceRepository,
-        FileStorageService fileStorageService,
-        CustodyLogService custodyLogService) {
-    this.evidenceRepository = evidenceRepository;
-    this.fileStorageService = fileStorageService;
-    this.custodyLogService = custodyLogService;
-}
+    public EvidenceServiceImpl(EvidenceRepository evidenceRepository,
+            CaseRepository caseRepository,
+            FileStorageService fileStorageService,
+            CustodyLogService custodyLogService) {
+        this.evidenceRepository = evidenceRepository;
+        this.caseRepository = caseRepository;
+        this.fileStorageService = fileStorageService;
+        this.custodyLogService = custodyLogService;
+    }
 
     @Override
-    public EvidenceUploadResponse uploadEvidence(MultipartFile file, String uploadedByEmail) {
+    @Transactional
+    public EvidenceUploadResponse uploadEvidence(MultipartFile file, String uploadedByEmail, Long caseId) {
 
         if (file == null || file.isEmpty()) {
             throw new RuntimeException("No file provided");
@@ -50,6 +57,14 @@ public EvidenceServiceImpl(EvidenceRepository evidenceRepository,
         if (!AllowedFileTypes.isAllowed(file.getOriginalFilename())) {
             throw new RuntimeException(
                     "Unsupported file type. Allowed: images, video, audio, PDF, ZIP, GPS data files.");
+        }
+
+        // Validate case exists BEFORE touching disk — avoids orphaning a stored
+        // file if an invalid caseId is supplied.
+        InvestigationCase investigationCase = null;
+        if (caseId != null) {
+            investigationCase = caseRepository.findById(caseId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + caseId));
         }
 
         String hash = HashUtil.sha256(fileStorageService.loadForHashing(file));
@@ -64,9 +79,16 @@ public EvidenceServiceImpl(EvidenceRepository evidenceRepository,
         evidence.setUploadTimestamp(LocalDateTime.now());
         evidence.setUploadedBy(uploadedByEmail);
         evidence.setRegistered(false);
+        evidence.setInvestigationCase(investigationCase);
 
         Evidence saved = evidenceRepository.save(evidence);
         custodyLogService.logAction(saved.getId(), CustodyAction.UPLOADED, uploadedByEmail, null);
+
+        if (caseId != null) {
+            custodyLogService.logAction(saved.getId(), CustodyAction.CASE_ASSIGNED, uploadedByEmail,
+                    "Assigned to case " + caseId + " at upload time");
+        }
+
         EvidenceType suggestedType = EvidenceType.guessFromFilename(saved.getOriginalFilename());
 
         return new EvidenceUploadResponse(
@@ -165,6 +187,65 @@ public EvidenceServiceImpl(EvidenceRepository evidenceRepository,
 
     @Override
     @Transactional
+    public EvidenceResponse assignToCase(Long evidenceId, Long caseId, String requesterEmail, boolean isAdmin) {
+
+        Evidence evidence = evidenceRepository.findById(evidenceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Evidence not found with id: " + evidenceId));
+
+        if (!isAdmin && !evidence.getUploadedBy().equals(requesterEmail)) {
+            throw new UnauthorizedActionException(
+                    "You can only assign a case to evidence that you uploaded.");
+        }
+
+        if (caseId == null) {
+            evidence.setInvestigationCase(null);
+        } else {
+            InvestigationCase investigationCase = caseRepository.findById(caseId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Case not found with id: " + caseId));
+            evidence.setInvestigationCase(investigationCase);
+        }
+
+        Evidence saved = evidenceRepository.save(evidence);
+
+        custodyLogService.logAction(
+                saved.getId(),
+                CustodyAction.CASE_ASSIGNED,
+                requesterEmail,
+                caseId == null ? "Unassigned from case" : "Assigned to case " + caseId);
+
+        return toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public IntegrityVerificationResponse verifyIntegrity(Long evidenceId, String requesterEmail) {
+
+        Evidence evidence = evidenceRepository.findById(evidenceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Evidence not found with id: " + evidenceId));
+
+        String recomputedHash = HashUtil.sha256(fileStorageService.loadFromDisk(evidence.getStoredFilename()));
+        String storedHash = evidence.getSha256Hash();
+
+        boolean matched = recomputedHash.equals(storedHash);
+
+        if (matched) {
+            custodyLogService.logAction(
+                    evidenceId, CustodyAction.INTEGRITY_VERIFIED, requesterEmail,
+                    "File hash matches stored value");
+        } else {
+            custodyLogService.logAction(
+                    evidenceId, CustodyAction.INTEGRITY_FAILURE, requesterEmail,
+                    "File hash mismatch — stored: " + storedHash + ", recomputed: " + recomputedHash);
+        }
+
+        return new IntegrityVerificationResponse(
+                evidenceId, matched, storedHash, recomputedHash,
+                matched ? "Integrity verified — file unchanged since upload."
+                        : "INTEGRITY FAILURE — file contents do not match the recorded hash.");
+    }
+
+    @Override
+    @Transactional
     public void deleteEvidence(Long evidenceId, String requesterEmail, boolean isAdmin) {
 
         Evidence evidence = evidenceRepository.findById(evidenceId)
@@ -186,6 +267,14 @@ public EvidenceServiceImpl(EvidenceRepository evidenceRepository,
 
         evidenceRepository.delete(evidence);
         fileStorageService.delete(evidence.getStoredFilename());
+    }
+
+    @Override
+    public List<EvidenceResponse> getEvidenceByCase(Long caseId) {
+        return evidenceRepository.findByInvestigationCaseId(caseId)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
     }
 
 }

@@ -68,6 +68,7 @@ import {
   registerEvidence,
   INTEGRITY_STATUS,
 } from '@/services/evidenceService';
+import { getLogForEvidence, verifyEvidenceChain } from '@/services/custodyService';
 
 import { EVIDENCE_TYPES } from '@/utils/constants';
 
@@ -136,8 +137,11 @@ export default function EvidenceRegistrationPage() {
   const { email } = useAuth();
 
   const [submitting, setSubmitting] = useState(false);
-
   const [showSuccess, setShowSuccess] = useState(false);
+  
+  const [custodyLogs, setCustodyLogs] = useState([]);
+  const [verifying, setVerifying] = useState(false);
+  const [verificationResult, setVerificationResult] = useState(null);
 
 
 
@@ -146,23 +150,34 @@ export default function EvidenceRegistrationPage() {
 const evidence = location.state?.evidence;
 const fileInfo = location.state?.file;
 const evidenceId = location.state?.evidenceId;
+const caseId = location.state?.caseId;
 const uploadResponse = location.state?.uploadResponse;
 
 
 
   useEffect(() => {
-
     if (isViewMode && !evidence) {
-
       navigate('/evidence/vault', { replace: true });
-
     } else if (!isViewMode && !fileInfo) {
-
       navigate('/evidence/vault', { replace: true });
-
+    } else if (isViewMode && evidence?.id) {
+      getLogForEvidence(evidence.id).then(setCustodyLogs).catch(console.error);
     }
-
   }, [isViewMode, evidence, fileInfo, navigate]);
+
+  const handleVerify = async () => {
+    if (!evidence?.id) return;
+    setVerifying(true);
+    try {
+      const res = await verifyEvidenceChain(evidence.id);
+      setVerificationResult(res);
+      toast.success(res.valid ? 'Hash chain verified successfully' : 'Hash mismatch detected!');
+    } catch (error) {
+      toast.error('Failed to verify chain');
+    } finally {
+      setVerifying(false);
+    }
+  };
 
 
 
@@ -234,11 +249,15 @@ const onSubmit = async (data) => {
     });
 
     setTimeout(() => {
-      navigate('/evidence/vault', {
-        state: {
-          highlightId: result.id,
-        },
-      });
+      if (caseId) {
+        navigate(`/cases/${caseId}`);
+      } else {
+        navigate('/evidence/vault', {
+          state: {
+            highlightId: result.id,
+          },
+        });
+      }
     }, 1200);
 
   } catch (error) {
@@ -455,11 +474,52 @@ const onSubmit = async (data) => {
               )}
 
             </CardContent>
-
           </Card>
 
+          {/* CUSTODY LOG */}
+          <Card className="animate-slide-in mt-6" style={{ animationDelay: '100ms' }}>
+            <CardHeader className="flex flex-row justify-between items-center">
+              <CardTitle>Chain of Custody</CardTitle>
+              <Button variant="outline" size="sm" onClick={handleVerify} disabled={verifying}>
+                {verifying ? 'Verifying...' : 'Verify Hash Chain'}
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {verificationResult && (
+                <div className={cn("mb-4 p-3 rounded-md border", verificationResult.valid ? "bg-success/10 border-success/30" : "bg-danger/10 border-danger/30")}>
+                  <p className={cn("font-medium", verificationResult.valid ? "text-success" : "text-danger")}>
+                    {verificationResult.message}
+                  </p>
+                  {!verificationResult.valid && verificationResult.brokenAtIndex !== -1 && (
+                    <p className="text-xs mt-1 text-danger">Chain broken at index {verificationResult.brokenAtIndex}</p>
+                  )}
+                </div>
+              )}
+              {custodyLogs.length === 0 ? (
+                <p className="text-sm text-muted">No custody events found.</p>
+              ) : (
+                <div className="space-y-4">
+                  {custodyLogs.map(log => (
+                    <div key={log.id} className="p-3 border border-border rounded-md bg-sidebar/50">
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <Badge variant="secondary">{log.action}</Badge>
+                          <span className="text-sm font-medium ml-2">{log.performedBy}</span>
+                        </div>
+                        <span className="text-xs text-muted">{formatDateTime(log.timestamp)}</span>
+                      </div>
+                      {log.remarks && <p className="text-sm text-muted mt-1">{log.remarks}</p>}
+                      <div className="mt-2 text-xs font-mono text-muted-foreground bg-background p-2 rounded break-all">
+                        <p>Prev: {log.previousHash || 'N/A'}</p>
+                        <p className="text-foreground mt-1">Curr: {log.currentHash}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
-
       </AppLayout>
 
     );
